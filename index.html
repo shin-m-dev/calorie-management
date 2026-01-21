@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルカロリー管理</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc; /* Slightly lighter bg */
+            touch-action: manipulation;
+        }
+        /* Hide scrollbar for input type number */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .meal-input-anim {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Modal Styles */
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+        
+        /* Magic Logic: Show Add Button only on the last row of each group */
+        .meal-row .add-btn { display: none; }
+        .meal-row:last-child .add-btn { display: flex; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col items-center py-3 px-3">
+
+    <!-- Header & Date (Compact) -->
+    <header class="w-full max-w-md mb-3 flex justify-between items-end">
+        <div>
+            <h1 class="text-lg font-bold text-gray-700 leading-tight">カロリー管理</h1>
+            <p class="text-xs text-gray-400" id="currentDate">Loading...</p>
+        </div>
+        <div class="flex space-x-2">
+            <button onclick="toggleHistoryModal()" class="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-2 py-1 rounded shadow-sm transition-colors">
+                <i class="fas fa-history text-emerald-500 mr-1"></i>履歴
+            </button>
+            <button onclick="manualReset()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-600 px-2 py-1 rounded transition-colors">
+                <i class="fas fa-undo mr-1"></i>リセット
+            </button>
+        </div>
+    </header>
+
+    <!-- Dashboard / Summary Card (Compact) -->
+    <div class="w-full max-w-md bg-white rounded-xl p-3 shadow-sm border border-gray-100 mb-3 relative overflow-hidden">
+        <div class="flex justify-between items-end mb-2">
+            <div>
+                <p class="text-[10px] text-gray-400 font-medium mb-0.5">残り摂取可能</p>
+                <div class="flex items-baseline">
+                    <span id="remainingCalories" class="text-4xl font-bold text-emerald-500 tracking-tight leading-none transition-colors duration-300">2000</span>
+                    <span class="text-sm text-gray-400 ml-1 font-medium">kcal</span>
+                </div>
+            </div>
+            
+            <div class="text-right">
+                 <label class="text-[10px] text-gray-400 block mb-0.5">目標設定</label>
+                 <div class="flex items-center justify-end bg-gray-50 rounded px-1.5 border border-gray-100">
+                     <input type="number" id="goalInput" value="2000" class="w-12 bg-transparent text-right text-xs font-semibold text-gray-600 py-0.5 focus:outline-none" oninput="updateCalculations()">
+                     <span class="text-[10px] text-gray-400 ml-0.5">kcal</span>
+                 </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar Compact -->
+        <div>
+            <div class="flex justify-between text-[10px] text-gray-400 mb-1">
+                <span>摂取: <span id="totalConsumed" class="font-bold text-gray-600">0</span></span>
+                <span>目標: <span id="goalDisplay">2000</span></span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div id="progressBar" class="bg-emerald-400 h-2 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+            <p id="overLimitMessage" class="text-center text-rose-500 text-[10px] font-bold mt-1 hidden">
+                <i class="fas fa-exclamation-triangle mr-1"></i>超過
+            </p>
+        </div>
+    </div>
+
+    <!-- Input Section (Compact Stack) -->
+    <div class="w-full max-w-md space-y-2 pb-8">
+        
+        <!-- Breakfast -->
+        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
+                <div class="flex items-center">
+                    <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 mr-2">
+                        <i class="fas fa-mug-hot text-[10px]"></i>
+                    </div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">朝食</label>
+                </div>
+                <span class="text-xs font-bold text-gray-600"><span id="total-breakfast">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
+            </div>
+            <div id="list-breakfast" class="space-y-1">
+                <!-- Inputs injected here -->
+            </div>
+        </div>
+
+        <!-- Lunch -->
+        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
+                <div class="flex items-center">
+                    <div class="w-5 h-5 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mr-2">
+                        <i class="fas fa-utensils text-[10px]"></i>
+                    </div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">昼食</label>
+                </div>
+                <span class="text-xs font-bold text-gray-600"><span id="total-lunch">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
+            </div>
+            <div id="list-lunch" class="space-y-1"></div>
+        </div>
+
+        <!-- Dinner -->
+        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
+                <div class="flex items-center">
+                    <div class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 mr-2">
+                        <i class="fas fa-moon text-[10px]"></i>
+                    </div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">夕食</label>
+                </div>
+                <span class="text-xs font-bold text-gray-600"><span id="total-dinner">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
+            </div>
+            <div id="list-dinner" class="space-y-1"></div>
+        </div>
+
+        <!-- Snacks -->
+        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
+            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
+                <div class="flex items-center">
+                    <div class="w-5 h-5 rounded-full bg-pink-100 flex items-center justify-center text-pink-500 mr-2">
+                        <i class="fas fa-cookie-bite text-[10px]"></i>
+                    </div>
+                    <label class="text-xs font-bold text-gray-500 uppercase">間食</label>
+                </div>
+                <span class="text-xs font-bold text-gray-600"><span id="total-snack">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
+            </div>
+            <div id="list-snack" class="space-y-1"></div>
+        </div>
+
+    </div>
+
+    <!-- History Modal -->
+    <div id="historyModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleHistoryModal()"></div>
+        
+        <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-xl shadow-lg z-50 overflow-y-auto max-h-[80vh]">
+            <div class="modal-content py-3 text-left px-5">
+                <!-- Title -->
+                <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                    <p class="text-lg font-bold text-gray-800">過去の履歴</p>
+                    <div class="cursor-pointer z-50 p-2" onclick="toggleHistoryModal()">
+                        <i class="fas fa-times text-gray-500"></i>
+                    </div>
+                </div>
+
+                <!-- Body -->
+                <div id="historyList" class="my-3 space-y-2">
+                    <p class="text-gray-400 text-center text-xs py-4">履歴はまだありません</p>
+                </div>
+
+                <!-- Footer -->
+                <div class="flex justify-end pt-2">
+                    <button onclick="clearHistory()" class="text-[10px] text-rose-400 hover:text-rose-600 mr-auto">
+                        全消去
+                    </button>
+                    <button onclick="toggleHistoryModal()" class="px-3 py-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 font-medium text-xs">
+                        閉じる
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // DOM Elements
+        const goalInput = document.getElementById('goalInput');
+        const remainingEl = document.getElementById('remainingCalories');
+        const totalConsumedEl = document.getElementById('totalConsumed');
+        const goalDisplayEl = document.getElementById('goalDisplay');
+        const progressBar = document.getElementById('progressBar');
+        const overLimitMsg = document.getElementById('overLimitMessage');
+        const currentDateEl = document.getElementById('currentDate');
+        
+        const historyModal = document.getElementById('historyModal');
+        const historyList = document.getElementById('historyList');
+
+        const categories = ['breakfast', 'lunch', 'dinner', 'snack'];
+        
+        const getTodayString = () => new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric' });
+
+        // Set Date in UI
+        const today = new Date();
+        const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+        currentDateEl.textContent = today.toLocaleDateString('ja-JP', dateOptions);
+
+        // --- Lifecycle ---
+        window.onload = function() {
+            checkAndArchiveDate();
+            loadCurrentData();
+        };
+
+        // --- Core Logic ---
+        function checkAndArchiveDate() {
+            const savedV2 = localStorage.getItem('calorieTrackerDataV2');
+            if (!savedV2) return;
+
+            const data = JSON.parse(savedV2);
+            const savedDate = data.date; 
+            const todayStr = getTodayString(); 
+
+            if (savedDate && savedDate !== todayStr) {
+                let total = 0;
+                categories.forEach(cat => {
+                    if (data.entries && data.entries[cat]) {
+                        data.entries[cat].forEach(val => {
+                            const num = parseInt(val);
+                            if (!isNaN(num)) total += num;
+                        });
+                    }
+                });
+
+                if (total > 0) {
+                    addToHistory({
+                        date: savedDate,
+                        total: total,
+                        goal: data.goal || 2000
+                    });
+                }
+
+                data.entries = { breakfast:[], lunch:[], dinner:[], snack:[] };
+                data.date = todayStr;
+                localStorage.setItem('calorieTrackerDataV2', JSON.stringify(data));
+            }
+        }
+
+        function addToHistory(record) {
+            let history = JSON.parse(localStorage.getItem('calorieHistory') || '[]');
+            history.unshift(record);
+            if (history.length > 30) history.pop();
+            localStorage.setItem('calorieHistory', JSON.stringify(history));
+        }
+
+        function loadCurrentData() {
+            const savedV2 = localStorage.getItem('calorieTrackerDataV2');
+            
+            categories.forEach(cat => {
+                document.getElementById(`list-${cat}`).innerHTML = '';
+            });
+
+            if (savedV2) {
+                const data = JSON.parse(savedV2);
+                if (data.goal) goalInput.value = data.goal;
+                
+                categories.forEach(cat => {
+                    if (data.entries && data.entries[cat] && Array.isArray(data.entries[cat])) {
+                        data.entries[cat].forEach(val => {
+                            addEntry(cat, val, false);
+                        });
+                    }
+                });
+            } else {
+                saveData();
+            }
+
+            // Ensure at least one empty row exists for every category
+            categories.forEach(cat => {
+                const container = document.getElementById(`list-${cat}`);
+                if (container.children.length === 0) {
+                    addEntry(cat, '', false);
+                }
+            });
+
+            updateCalculations();
+        }
+
+        function saveData() {
+            const data = {
+                goal: goalInput.value,
+                date: getTodayString(),
+                entries: {}
+            };
+
+            categories.forEach(cat => {
+                const container = document.getElementById(`list-${cat}`);
+                const inputs = container.querySelectorAll('.cal-input');
+                const values = [];
+                inputs.forEach(input => {
+                    if (input.value.trim() !== '') {
+                        values.push(input.value);
+                    }
+                });
+                data.entries[cat] = values;
+            });
+
+            localStorage.setItem('calorieTrackerDataV2', JSON.stringify(data));
+        }
+
+        // --- UI Interactions ---
+        function addEntry(category, value = '', focus = true) {
+            const container = document.getElementById(`list-${category}`);
+            const div = document.createElement('div');
+            
+            div.className = 'flex items-center meal-row meal-input-anim group';
+            
+            div.innerHTML = `
+                <input type="number" 
+                    placeholder="200" 
+                    value="${value}"
+                    class="cal-input w-20 bg-gray-50 text-gray-800 font-semibold py-1 px-2 rounded border border-transparent focus:bg-white focus:border-emerald-300 focus:outline-none transition-colors text-sm"
+                    oninput="updateCalculations(); saveData()"
+                    onkeydown="handleEnter(event, '${category}')"
+                >
+                <span class="text-xs text-gray-400 ml-1.5 w-6">kcal</span>
+                
+                <button onclick="removeEntry(this, '${category}')" tabindex="-1" class="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-rose-400 transition-colors rounded-full hover:bg-rose-50 ml-0.5">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+
+                <button onclick="addEntry('${category}')" class="add-btn w-6 h-6 items-center justify-center text-emerald-500 hover:text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors rounded-full ml-1">
+                    <i class="fas fa-plus text-[10px]"></i>
+                </button>
+            `;
+            
+            container.appendChild(div);
+            
+            if (focus) {
+                const input = div.querySelector('input');
+                input.focus();
+            }
+            updateCalculations();
+        }
+
+        function removeEntry(btn, category) {
+            const row = btn.parentElement;
+            const container = row.parentElement;
+            
+            row.remove();
+            
+            if (container.children.length === 0) {
+                addEntry(category, '', false);
+            }
+
+            updateCalculations();
+            saveData();
+        }
+
+        function handleEnter(e, category) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addEntry(category);
+            }
+        }
+
+        function updateCalculations() {
+            const goal = parseInt(goalInput.value) || 0;
+            let grandTotal = 0;
+
+            categories.forEach(cat => {
+                const container = document.getElementById(`list-${cat}`);
+                const inputs = container.querySelectorAll('.cal-input');
+                let sum = 0;
+                inputs.forEach(input => {
+                    const val = parseInt(input.value);
+                    if (!isNaN(val)) sum += val;
+                });
+                document.getElementById(`total-${cat}`).textContent = sum.toLocaleString();
+                grandTotal += sum;
+            });
+
+            const remaining = goal - grandTotal;
+
+            // Update UI
+            goalDisplayEl.textContent = goal.toLocaleString();
+            totalConsumedEl.textContent = grandTotal.toLocaleString();
+            remainingEl.textContent = remaining.toLocaleString();
+
+            let percentage = 0;
+            if (goal > 0) percentage = (grandTotal / goal) * 100;
+
+            if (remaining < 0) {
+                remainingEl.className = 'text-4xl font-bold text-rose-500 tracking-tight leading-none transition-colors duration-300';
+                progressBar.className = 'bg-rose-500 h-2 rounded-full transition-all duration-500 ease-out';
+                overLimitMsg.classList.remove('hidden');
+                progressBar.style.width = '100%';
+            } else {
+                overLimitMsg.classList.add('hidden');
+                if (percentage > 85) {
+                    remainingEl.className = 'text-4xl font-bold text-yellow-500 tracking-tight leading-none transition-colors duration-300';
+                    progressBar.className = 'bg-yellow-400 h-2 rounded-full transition-all duration-500 ease-out';
+                } else {
+                    remainingEl.className = 'text-4xl font-bold text-emerald-500 tracking-tight leading-none transition-colors duration-300';
+                    progressBar.className = 'bg-emerald-400 h-2 rounded-full transition-all duration-500 ease-out';
+                }
+                progressBar.style.width = `${percentage}%`;
+            }
+        }
+
+        function manualReset() {
+            if(confirm('今日のデータをリセットしますか？')) {
+                categories.forEach(cat => {
+                    document.getElementById(`list-${cat}`).innerHTML = '';
+                    addEntry(cat, '', false);
+                });
+                updateCalculations();
+                saveData();
+            }
+        }
+
+        function toggleHistoryModal() {
+            const body = document.querySelector('body');
+            const modal = document.querySelector('.modal');
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            body.classList.toggle('modal-active');
+            
+            if (!modal.classList.contains('opacity-0')) {
+                renderHistory();
+            }
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem('calorieHistory') || '[]');
+            historyList.innerHTML = '';
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<p class="text-gray-400 text-center text-xs py-4">履歴はまだありません</p>';
+                return;
+            }
+
+            history.forEach(item => {
+                const isOver = item.total > item.goal;
+                const percent = Math.round((item.total / item.goal) * 100);
+                const badgeClass = isOver ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600';
+                
+                const html = `
+                    <div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100">
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold mb-0.5">${item.date}</p>
+                            <p class="text-sm font-bold text-gray-700">${item.total.toLocaleString()} <span class="text-[10px] font-normal text-gray-500">kcal</span></p>
+                        </div>
+                        <div class="text-right">
+                             <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} mb-0.5">
+                                ${percent}%
+                             </span>
+                             <p class="text-[10px] text-gray-400">目標: ${item.goal}</p>
+                        </div>
+                    </div>
+                `;
+                historyList.insertAdjacentHTML('beforeend', html);
+            });
+        }
+
+        function clearHistory() {
+            if(confirm('履歴をすべて消去しますか？')) {
+                localStorage.removeItem('calorieHistory');
+                renderHistory();
+            }
+        }
+    </script>
+</body>
+</html>
