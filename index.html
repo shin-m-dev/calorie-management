@@ -2,8 +2,15 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>シンプルカロリー管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>カロリー管理</title>
+    
+    <!-- iPhone Home Screen Icon & App Settings -->
+    <link rel="apple-touch-icon" href="https://placehold.co/180x180/34d399/ffffff/png?text=Cal">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="カロリー管理">
+
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Icons -->
@@ -14,8 +21,10 @@
     <style>
         body {
             font-family: 'Noto Sans JP', sans-serif;
-            background-color: #f8fafc; /* Slightly lighter bg */
+            background-color: #f8fafc;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
+            padding-bottom: env(safe-area-inset-bottom); /* Safe area for iPhone home bar */
         }
         /* Hide scrollbar for input type number */
         input[type=number]::-webkit-inner-spin-button, 
@@ -42,10 +51,10 @@
         .meal-row:last-child .add-btn { display: flex; }
     </style>
 </head>
-<body class="text-gray-800 min-h-screen flex flex-col items-center py-3 px-3">
+<body class="text-gray-800 min-h-screen flex flex-col items-center py-3 px-3 select-none">
 
     <!-- Header & Date (Compact) -->
-    <header class="w-full max-w-md mb-3 flex justify-between items-end">
+    <header class="w-full max-w-md mb-3 flex justify-between items-end pt-2">
         <div>
             <h1 class="text-lg font-bold text-gray-700 leading-tight">カロリー管理</h1>
             <p class="text-xs text-gray-400" id="currentDate">Loading...</p>
