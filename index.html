@@ -23,8 +23,8 @@
             font-family: 'Noto Sans JP', sans-serif;
             background-color: #f8fafc;
             touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent; /* Remove tap highlight on iOS */
-            padding-bottom: env(safe-area-inset-bottom); /* Safe area for iPhone home bar */
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: env(safe-area-inset-bottom);
         }
         /* Hide scrollbar for input type number */
         input[type=number]::-webkit-inner-spin-button, 
@@ -46,9 +46,51 @@
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
         
-        /* Magic Logic: Show Add Button only on the last row of each group */
-        .meal-row .add-btn { display: none; }
-        .meal-row:last-child .add-btn { display: flex; }
+        /* Show Add/Camera Buttons only on the last row of each group */
+        .meal-row .action-btns { display: none; }
+        .meal-row:last-child .action-btns { display: flex; }
+
+        /* Loader */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #34d399;
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Toast Notification (Error use only now) */
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: rgba(50, 50, 50, 0.9);
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 10px 16px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+            pointer-events: none;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
     </style>
 </head>
 <body class="text-gray-800 min-h-screen flex flex-col items-center py-3 px-3 select-none">
@@ -60,11 +102,11 @@
             <p class="text-xs text-gray-400" id="currentDate">Loading...</p>
         </div>
         <div class="flex space-x-2">
+            <button onclick="toggleSettingsModal()" class="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-400 px-2 py-1 rounded shadow-sm transition-colors">
+                <i class="fas fa-cog"></i>
+            </button>
             <button onclick="toggleHistoryModal()" class="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-2 py-1 rounded shadow-sm transition-colors">
                 <i class="fas fa-history text-emerald-500 mr-1"></i>履歴
-            </button>
-            <button onclick="manualReset()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-600 px-2 py-1 rounded transition-colors">
-                <i class="fas fa-undo mr-1"></i>リセット
             </button>
         </div>
     </header>
@@ -106,98 +148,110 @@
 
     <!-- Input Section (Compact Stack) -->
     <div class="w-full max-w-md space-y-2 pb-8">
-        
-        <!-- Breakfast -->
-        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
-                <div class="flex items-center">
-                    <div class="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 mr-2">
-                        <i class="fas fa-mug-hot text-[10px]"></i>
-                    </div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">朝食</label>
-                </div>
-                <span class="text-xs font-bold text-gray-600"><span id="total-breakfast">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
-            </div>
-            <div id="list-breakfast" class="space-y-1">
-                <!-- Inputs injected here -->
-            </div>
-        </div>
-
-        <!-- Lunch -->
-        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
-                <div class="flex items-center">
-                    <div class="w-5 h-5 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mr-2">
-                        <i class="fas fa-utensils text-[10px]"></i>
-                    </div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">昼食</label>
-                </div>
-                <span class="text-xs font-bold text-gray-600"><span id="total-lunch">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
-            </div>
-            <div id="list-lunch" class="space-y-1"></div>
-        </div>
-
-        <!-- Dinner -->
-        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
-                <div class="flex items-center">
-                    <div class="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500 mr-2">
-                        <i class="fas fa-moon text-[10px]"></i>
-                    </div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">夕食</label>
-                </div>
-                <span class="text-xs font-bold text-gray-600"><span id="total-dinner">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
-            </div>
-            <div id="list-dinner" class="space-y-1"></div>
-        </div>
-
-        <!-- Snacks -->
-        <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
-            <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
-                <div class="flex items-center">
-                    <div class="w-5 h-5 rounded-full bg-pink-100 flex items-center justify-center text-pink-500 mr-2">
-                        <i class="fas fa-cookie-bite text-[10px]"></i>
-                    </div>
-                    <label class="text-xs font-bold text-gray-500 uppercase">間食</label>
-                </div>
-                <span class="text-xs font-bold text-gray-600"><span id="total-snack">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
-            </div>
-            <div id="list-snack" class="space-y-1"></div>
-        </div>
-
+        <!-- Categories will be rendered here -->
+        <div id="categoriesContainer" class="space-y-2"></div>
     </div>
+
+    <!-- Hidden File Input for Camera -->
+    <input type="file" id="cameraInput" accept="image/*" class="hidden" onchange="handlePhoto(this)">
 
     <!-- History Modal -->
     <div id="historyModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleHistoryModal()"></div>
-        
         <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-xl shadow-lg z-50 overflow-y-auto max-h-[80vh]">
             <div class="modal-content py-3 text-left px-5">
-                <!-- Title -->
                 <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                     <p class="text-lg font-bold text-gray-800">過去の履歴</p>
                     <div class="cursor-pointer z-50 p-2" onclick="toggleHistoryModal()">
                         <i class="fas fa-times text-gray-500"></i>
                     </div>
                 </div>
-
-                <!-- Body -->
                 <div id="historyList" class="my-3 space-y-2">
                     <p class="text-gray-400 text-center text-xs py-4">履歴はまだありません</p>
                 </div>
-
-                <!-- Footer -->
                 <div class="flex justify-end pt-2">
-                    <button onclick="clearHistory()" class="text-[10px] text-rose-400 hover:text-rose-600 mr-auto">
-                        全消去
-                    </button>
-                    <button onclick="toggleHistoryModal()" class="px-3 py-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 font-medium text-xs">
-                        閉じる
+                    <button onclick="clearHistory()" class="text-[10px] text-rose-400 hover:text-rose-600 mr-auto">全消去</button>
+                    <button onclick="toggleHistoryModal()" class="px-3 py-1.5 bg-gray-100 rounded text-gray-600 hover:bg-gray-200 font-medium text-xs">閉じる</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleSettingsModal()"></div>
+        <div class="modal-container bg-white w-11/12 max-w-md mx-auto rounded-xl shadow-lg z-50">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p class="text-lg font-bold text-gray-800">設定</p>
+                    <i class="fas fa-times text-gray-500 cursor-pointer" onclick="toggleSettingsModal()"></i>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Gemini API Key</label>
+                    <p class="text-[10px] text-gray-400 mb-2">写真を解析してカロリーを自動入力するには、Google AI Studioで取得したAPIキーを入力してください。キーがない場合はデモモードで動作します。</p>
+                    <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full bg-gray-50 border border-gray-200 rounded p-2 text-sm focus:outline-none focus:border-emerald-400">
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="saveSettings()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 px-4 rounded text-xs transition-colors">
+                        保存する
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Analysis Loading Modal -->
+    <div id="analysisModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-75"></div>
+        <div class="modal-container bg-white w-48 rounded-xl shadow-lg z-50 p-4 flex flex-col items-center justify-center">
+            <div class="loader mb-3"></div>
+            <p class="text-xs font-bold text-gray-600">写真を解析中...</p>
+        </div>
+    </div>
+
+    <!-- Result Modal (New) -->
+    <div id="resultModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-60" onclick="toggleResultModal(false)"></div>
+        <div class="modal-container bg-white w-11/12 max-w-sm mx-auto rounded-xl shadow-2xl z-50 p-5 transform transition-all scale-100">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-check text-emerald-500 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-1">解析完了</h3>
+                <p id="resultName" class="text-sm text-gray-500 mb-4 font-medium">料理名</p>
+                
+                <div class="bg-gray-50 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-gray-400 mb-1">推定カロリー</p>
+                    <p class="text-3xl font-bold text-gray-800"><span id="resultCalories">0</span> <span class="text-sm font-normal text-gray-500">kcal</span></p>
+                </div>
+
+                <!-- Nutrients -->
+                <div class="grid grid-cols-3 gap-2 text-center mb-4">
+                    <div class="bg-orange-50 rounded p-2">
+                        <p class="text-[10px] text-orange-400 font-bold">タンパク質</p>
+                        <p id="resultProtein" class="text-sm font-bold text-gray-700">-</p>
+                    </div>
+                    <div class="bg-yellow-50 rounded p-2">
+                        <p class="text-[10px] text-yellow-500 font-bold">脂質</p>
+                        <p id="resultFat" class="text-sm font-bold text-gray-700">-</p>
+                    </div>
+                    <div class="bg-blue-50 rounded p-2">
+                        <p class="text-[10px] text-blue-400 font-bold">炭水化物</p>
+                        <p id="resultCarbs" class="text-sm font-bold text-gray-700">-</p>
+                    </div>
+                </div>
+
+                <p id="resultComment" class="text-xs text-left text-gray-500 bg-gray-50 p-2 rounded mb-4 min-h-[40px] leading-relaxed"></p>
+
+                <button onclick="toggleResultModal(false)" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-sm transition-colors shadow-md">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast">Message</div>
 
     <!-- Script -->
     <script>
@@ -209,24 +263,61 @@
         const progressBar = document.getElementById('progressBar');
         const overLimitMsg = document.getElementById('overLimitMessage');
         const currentDateEl = document.getElementById('currentDate');
+        const categoriesContainer = document.getElementById('categoriesContainer');
+        const cameraInput = document.getElementById('cameraInput');
         
         const historyModal = document.getElementById('historyModal');
         const historyList = document.getElementById('historyList');
+        const settingsModal = document.getElementById('settingsModal');
+        const analysisModal = document.getElementById('analysisModal');
+        const resultModal = document.getElementById('resultModal');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const toast = document.getElementById('toast');
 
-        const categories = ['breakfast', 'lunch', 'dinner', 'snack'];
-        
+        const categories = [
+            { id: 'breakfast', label: '朝食', icon: 'mug-hot', color: 'orange' },
+            { id: 'lunch', label: '昼食', icon: 'utensils', color: 'yellow' },
+            { id: 'dinner', label: '夕食', icon: 'moon', color: 'indigo' },
+            { id: 'snack', label: '間食', icon: 'cookie-bite', color: 'pink' }
+        ];
+
+        let activeCategoryForCamera = null;
+        let activeInputRowForCamera = null;
+
         const getTodayString = () => new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric' });
 
-        // Set Date in UI
+        // Set Date
         const today = new Date();
-        const dateOptions = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
-        currentDateEl.textContent = today.toLocaleDateString('ja-JP', dateOptions);
+        currentDateEl.textContent = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
 
         // --- Lifecycle ---
         window.onload = function() {
+            renderCategories(); // Render HTML structure for categories
             checkAndArchiveDate();
             loadCurrentData();
+            loadSettings();
         };
+
+        // --- Rendering ---
+        function renderCategories() {
+            categoriesContainer.innerHTML = '';
+            categories.forEach(cat => {
+                const html = `
+                <div class="bg-white rounded-lg p-2.5 shadow-sm border border-gray-100">
+                    <div class="flex items-center justify-between mb-1.5 border-b border-gray-50 pb-1">
+                        <div class="flex items-center">
+                            <div class="w-5 h-5 rounded-full bg-${cat.color}-100 flex items-center justify-center text-${cat.color}-500 mr-2">
+                                <i class="fas fa-${cat.icon} text-[10px]"></i>
+                            </div>
+                            <label class="text-xs font-bold text-gray-500 uppercase">${cat.label}</label>
+                        </div>
+                        <span class="text-xs font-bold text-gray-600"><span id="total-${cat.id}">0</span> <span class="text-[10px] font-normal text-gray-400">kcal</span></span>
+                    </div>
+                    <div id="list-${cat.id}" class="space-y-1"></div>
+                </div>`;
+                categoriesContainer.insertAdjacentHTML('beforeend', html);
+            });
+        }
 
         // --- Core Logic ---
         function checkAndArchiveDate() {
@@ -234,30 +325,23 @@
             if (!savedV2) return;
 
             const data = JSON.parse(savedV2);
-            const savedDate = data.date; 
-            const todayStr = getTodayString(); 
-
-            if (savedDate && savedDate !== todayStr) {
+            if (data.date && data.date !== getTodayString()) {
                 let total = 0;
                 categories.forEach(cat => {
-                    if (data.entries && data.entries[cat]) {
-                        data.entries[cat].forEach(val => {
-                            const num = parseInt(val);
-                            if (!isNaN(num)) total += num;
+                    if (data.entries && data.entries[cat.id]) {
+                        data.entries[cat.id].forEach(entry => {
+                             const num = parseInt(entry.kcal); 
+                             if (!isNaN(num)) total += num;
                         });
                     }
                 });
 
                 if (total > 0) {
-                    addToHistory({
-                        date: savedDate,
-                        total: total,
-                        goal: data.goal || 2000
-                    });
+                    addToHistory({ date: data.date, total: total, goal: data.goal || 2000 });
                 }
 
                 data.entries = { breakfast:[], lunch:[], dinner:[], snack:[] };
-                data.date = todayStr;
+                data.date = getTodayString();
                 localStorage.setItem('calorieTrackerDataV2', JSON.stringify(data));
             }
         }
@@ -272,18 +356,21 @@
         function loadCurrentData() {
             const savedV2 = localStorage.getItem('calorieTrackerDataV2');
             
-            categories.forEach(cat => {
-                document.getElementById(`list-${cat}`).innerHTML = '';
-            });
+            categories.forEach(cat => document.getElementById(`list-${cat.id}`).innerHTML = '');
 
             if (savedV2) {
                 const data = JSON.parse(savedV2);
                 if (data.goal) goalInput.value = data.goal;
                 
                 categories.forEach(cat => {
-                    if (data.entries && data.entries[cat] && Array.isArray(data.entries[cat])) {
-                        data.entries[cat].forEach(val => {
-                            addEntry(cat, val, false);
+                    if (data.entries && data.entries[cat.id]) {
+                        data.entries[cat.id].forEach(entry => {
+                            if (typeof entry === 'object') {
+                                // Ignore name for display in input, just use kcal
+                                addEntry(cat.id, entry.kcal, false);
+                            } else {
+                                addEntry(cat.id, entry, false);
+                            }
                         });
                     }
                 });
@@ -291,12 +378,9 @@
                 saveData();
             }
 
-            // Ensure at least one empty row exists for every category
             categories.forEach(cat => {
-                const container = document.getElementById(`list-${cat}`);
-                if (container.children.length === 0) {
-                    addEntry(cat, '', false);
-                }
+                const container = document.getElementById(`list-${cat.id}`);
+                if (container.children.length === 0) addEntry(cat.id, '', false);
             });
 
             updateCalculations();
@@ -310,50 +394,74 @@
             };
 
             categories.forEach(cat => {
-                const container = document.getElementById(`list-${cat}`);
-                const inputs = container.querySelectorAll('.cal-input');
-                const values = [];
-                inputs.forEach(input => {
-                    if (input.value.trim() !== '') {
-                        values.push(input.value);
+                const container = document.getElementById(`list-${cat.id}`);
+                const rows = container.querySelectorAll('.meal-row');
+                const entries = [];
+                rows.forEach(row => {
+                    const kcalInput = row.querySelector('.kcal-input');
+                    
+                    if (kcalInput.value.trim() !== '') {
+                        entries.push({
+                            kcal: kcalInput.value
+                        });
                     }
                 });
-                data.entries[cat] = values;
+                data.entries[cat.id] = entries;
             });
 
             localStorage.setItem('calorieTrackerDataV2', JSON.stringify(data));
         }
 
+        function loadSettings() {
+            const key = localStorage.getItem('geminiApiKey');
+            if (key) apiKeyInput.value = key;
+        }
+
+        function saveSettings() {
+            localStorage.setItem('geminiApiKey', apiKeyInput.value.trim());
+            toggleSettingsModal();
+        }
+
         // --- UI Interactions ---
-        function addEntry(category, value = '', focus = true) {
+
+        function addEntry(category, kcal = '', focus = true) {
             const container = document.getElementById(`list-${category}`);
             const div = document.createElement('div');
             
             div.className = 'flex items-center meal-row meal-input-anim group';
             
+            const displayPlaceholder = 'カロリー';
+
             div.innerHTML = `
-                <input type="number" 
-                    placeholder="200" 
-                    value="${value}"
-                    class="cal-input w-20 bg-gray-50 text-gray-800 font-semibold py-1 px-2 rounded border border-transparent focus:bg-white focus:border-emerald-300 focus:outline-none transition-colors text-sm"
-                    oninput="updateCalculations(); saveData()"
-                    onkeydown="handleEnter(event, '${category}')"
-                >
-                <span class="text-xs text-gray-400 ml-1.5 w-6">kcal</span>
+                <div class="flex-1 flex items-center bg-gray-50 rounded border border-transparent focus-within:border-emerald-300 focus-within:bg-white transition-colors mr-1">
+                    <input type="number" 
+                        placeholder="${displayPlaceholder}" 
+                        value="${kcal}"
+                        class="kcal-input w-full bg-transparent text-gray-800 font-semibold py-1 px-2 focus:outline-none text-sm"
+                        oninput="updateCalculations(); saveData()"
+                        onkeydown="handleEnter(event, '${category}')"
+                    >
+                    <span class="text-xs text-gray-400 mr-2 whitespace-nowrap">kcal</span>
+                </div>
                 
-                <button onclick="removeEntry(this, '${category}')" tabindex="-1" class="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-rose-400 transition-colors rounded-full hover:bg-rose-50 ml-0.5">
+                <button onclick="removeEntry(this, '${category}')" tabindex="-1" class="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-rose-400 transition-colors rounded-full hover:bg-rose-50">
                     <i class="fas fa-times text-xs"></i>
                 </button>
 
-                <button onclick="addEntry('${category}')" class="add-btn w-6 h-6 items-center justify-center text-emerald-500 hover:text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors rounded-full ml-1">
-                    <i class="fas fa-plus text-[10px]"></i>
-                </button>
+                <div class="action-btns flex ml-1">
+                    <button onclick="triggerCamera('${category}', this)" class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-emerald-500 bg-gray-100 hover:bg-emerald-50 transition-colors rounded-full mr-1">
+                        <i class="fas fa-camera text-[10px]"></i>
+                    </button>
+                    <button onclick="addEntry('${category}')" class="w-6 h-6 flex items-center justify-center text-emerald-500 hover:text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors rounded-full">
+                        <i class="fas fa-plus text-[10px]"></i>
+                    </button>
+                </div>
             `;
             
             container.appendChild(div);
             
             if (focus) {
-                const input = div.querySelector('input');
+                const input = div.querySelector('.kcal-input');
                 input.focus();
             }
             updateCalculations();
@@ -362,13 +470,8 @@
         function removeEntry(btn, category) {
             const row = btn.parentElement;
             const container = row.parentElement;
-            
             row.remove();
-            
-            if (container.children.length === 0) {
-                addEntry(category, '', false);
-            }
-
+            if (container.children.length === 0) addEntry(category, '', false);
             updateCalculations();
             saveData();
         }
@@ -380,19 +483,162 @@
             }
         }
 
+        // --- Camera & AI Logic ---
+
+        function triggerCamera(category, btnElement) {
+            activeCategoryForCamera = category;
+            activeInputRowForCamera = btnElement.closest('.meal-row');
+            cameraInput.click();
+        }
+
+        async function handlePhoto(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const mimeType = file.type || "image/jpeg"; 
+                
+                // Show loading
+                toggleAnalysisModal(true);
+
+                try {
+                    const base64Image = await convertToBase64(file);
+                    const apiKey = localStorage.getItem('geminiApiKey');
+                    
+                    let result;
+                    if (apiKey) {
+                        result = await analyzeWithGemini(base64Image, mimeType, apiKey);
+                    } else {
+                        // Demo mode
+                        await new Promise(r => setTimeout(r, 1500)); 
+                        result = { 
+                            name: "（デモ）おにぎりセット", 
+                            calories: 450,
+                            protein: "15g",
+                            fat: "5g",
+                            carbs: "85g",
+                            comment: "デモモードです。APIキーを設定すると実際の解析が可能です。"
+                        };
+                    }
+
+                    // Apply result
+                    if (activeInputRowForCamera) {
+                        const kcalInput = activeInputRowForCamera.querySelector('.kcal-input');
+                        
+                        // Update values (Calories only)
+                        kcalInput.value = result.calories;
+                        
+                        updateCalculations();
+                        saveData();
+                        
+                        // Show detailed result in modal
+                        showResultModal(result);
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    // Error Handling
+                    let msg = "解析に失敗しました";
+                    if (e.message.includes('400')) msg = "画像形式またはリクエストが無効です(400)";
+                    if (e.message.includes('401') || e.message.includes('403')) msg = "APIキーが無効です";
+                    if (e.message.includes('404')) msg = "指定されたモデルが見つかりません(404)";
+                    if (e.message.includes('429')) msg = "API利用制限です。時間を空けてください";
+                    
+                    showToast(`エラー: ${msg} (${e.message})`, true);
+                } finally {
+                    toggleAnalysisModal(false);
+                    input.value = ''; // Reset input
+                }
+            }
+        }
+
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.style.backgroundColor = isError ? 'rgba(220, 38, 38, 0.9)' : 'rgba(50, 50, 50, 0.9)';
+            toast.className = 'show';
+            setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 4000);
+        }
+
+        function showResultModal(result) {
+            document.getElementById('resultName').textContent = result.name || '不明な料理';
+            document.getElementById('resultCalories').textContent = result.calories || 0;
+            document.getElementById('resultProtein').textContent = result.protein || '-';
+            document.getElementById('resultFat').textContent = result.fat || '-';
+            document.getElementById('resultCarbs').textContent = result.carbs || '-';
+            document.getElementById('resultComment').textContent = result.comment || '';
+            
+            toggleResultModal(true);
+        }
+
+        function convertToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1]; 
+                    resolve(base64);
+                };
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        async function analyzeWithGemini(base64Image, mimeType, apiKey) {
+            // Using gemini-2.5-flash as requested previously
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const prompt = `
+                この画像の食品を分析してください。
+                以下の情報をJSON形式のみで返してください。
+                {
+                  "name": "料理名（短く）",
+                  "calories": 数値(kcal),
+                  "protein": "数値g (推定)",
+                  "fat": "数値g (推定)",
+                  "carbs": "数値g (推定)",
+                  "comment": "短いコメント（栄養バランスや推測の根拠など）"
+                }
+                数値は整数で推計してください。
+            `;
+
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        { inline_data: { mime_type: mimeType, data: base64Image } }
+                    ]
+                }]
+            };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.candidates[0].content.parts[0].text;
+            
+            const jsonStr = text.replace(/```json|```/g, '').trim();
+            return JSON.parse(jsonStr);
+        }
+
+        // --- Helper Functions ---
         function updateCalculations() {
             const goal = parseInt(goalInput.value) || 0;
             let grandTotal = 0;
 
             categories.forEach(cat => {
-                const container = document.getElementById(`list-${cat}`);
-                const inputs = container.querySelectorAll('.cal-input');
+                const container = document.getElementById(`list-${cat.id}`);
+                const inputs = container.querySelectorAll('.kcal-input');
                 let sum = 0;
                 inputs.forEach(input => {
                     const val = parseInt(input.value);
                     if (!isNaN(val)) sum += val;
                 });
-                document.getElementById(`total-${cat}`).textContent = sum.toLocaleString();
+                document.getElementById(`total-${cat.id}`).textContent = sum.toLocaleString();
                 grandTotal += sum;
             });
 
@@ -424,43 +670,54 @@
             }
         }
 
-        function manualReset() {
-            if(confirm('今日のデータをリセットしますか？')) {
-                categories.forEach(cat => {
-                    document.getElementById(`list-${cat}`).innerHTML = '';
-                    addEntry(cat, '', false);
-                });
-                updateCalculations();
-                saveData();
+        // --- Modal Helpers ---
+        function toggleHistoryModal() {
+            toggleModal(historyModal);
+            if (!historyModal.classList.contains('opacity-0')) renderHistory();
+        }
+
+        function toggleSettingsModal() {
+            toggleModal(settingsModal);
+        }
+
+        function toggleAnalysisModal(show) {
+            if (show) {
+                analysisModal.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                analysisModal.classList.add('opacity-0', 'pointer-events-none');
             }
         }
 
-        function toggleHistoryModal() {
+        function toggleResultModal(show) {
+             if (show) {
+                resultModal.classList.remove('opacity-0', 'pointer-events-none');
+                resultModal.querySelector('.modal-container').classList.add('scale-100');
+                resultModal.querySelector('.modal-container').classList.remove('scale-95');
+            } else {
+                resultModal.classList.add('opacity-0', 'pointer-events-none');
+                resultModal.querySelector('.modal-container').classList.remove('scale-100');
+                resultModal.querySelector('.modal-container').classList.add('scale-95');
+            }
+        }
+
+        function toggleModal(modal) {
             const body = document.querySelector('body');
-            const modal = document.querySelector('.modal');
             modal.classList.toggle('opacity-0');
             modal.classList.toggle('pointer-events-none');
             body.classList.toggle('modal-active');
-            
-            if (!modal.classList.contains('opacity-0')) {
-                renderHistory();
-            }
         }
 
         function renderHistory() {
             const history = JSON.parse(localStorage.getItem('calorieHistory') || '[]');
             historyList.innerHTML = '';
-
             if (history.length === 0) {
                 historyList.innerHTML = '<p class="text-gray-400 text-center text-xs py-4">履歴はまだありません</p>';
                 return;
             }
-
             history.forEach(item => {
                 const isOver = item.total > item.goal;
                 const percent = Math.round((item.total / item.goal) * 100);
                 const badgeClass = isOver ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600';
-                
                 const html = `
                     <div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-100">
                         <div>
@@ -468,13 +725,10 @@
                             <p class="text-sm font-bold text-gray-700">${item.total.toLocaleString()} <span class="text-[10px] font-normal text-gray-500">kcal</span></p>
                         </div>
                         <div class="text-right">
-                             <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} mb-0.5">
-                                ${percent}%
-                             </span>
+                             <span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${badgeClass} mb-0.5">${percent}%</span>
                              <p class="text-[10px] text-gray-400">目標: ${item.goal}</p>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 historyList.insertAdjacentHTML('beforeend', html);
             });
         }
