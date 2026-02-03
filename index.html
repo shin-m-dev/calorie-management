@@ -65,7 +65,7 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* Toast Notification (Error use only now) */
+        /* Toast Notification */
         #toast {
             visibility: hidden;
             min-width: 200px;
@@ -90,6 +90,16 @@
             visibility: visible;
             opacity: 1;
             bottom: 50px;
+        }
+
+        /* Meds Checkbox Styles */
+        .med-btn.active {
+            background-color: #ecfdf5; /* emerald-50 */
+            border-color: #34d399; /* emerald-400 */
+            color: #059669; /* emerald-600 */
+        }
+        .med-btn.active i {
+            color: #10b981; /* emerald-500 */
         }
     </style>
 </head>
@@ -143,6 +153,30 @@
             <p id="overLimitMessage" class="text-center text-rose-500 text-[10px] font-bold mt-1 hidden">
                 <i class="fas fa-exclamation-triangle mr-1"></i>超過
             </p>
+        </div>
+    </div>
+
+    <!-- Meds Tracker Section (New) -->
+    <div class="w-full max-w-md bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 mb-3 flex items-center justify-between">
+        <div class="flex items-center pl-1">
+            <div class="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-400 mr-2">
+                <i class="fas fa-pills text-xs"></i>
+            </div>
+            <span class="text-xs font-bold text-gray-500">薬・サプリ</span>
+        </div>
+        <div class="flex space-x-2">
+            <button onclick="toggleMeds('breakfast')" id="med-breakfast" class="med-btn flex items-center px-3 py-1 rounded border border-gray-100 bg-gray-50 text-gray-400 transition-all duration-200">
+                <i class="fas fa-check-circle text-[10px] mr-1.5"></i>
+                <span class="text-[10px] font-bold">朝</span>
+            </button>
+            <button onclick="toggleMeds('lunch')" id="med-lunch" class="med-btn flex items-center px-3 py-1 rounded border border-gray-100 bg-gray-50 text-gray-400 transition-all duration-200">
+                <i class="fas fa-check-circle text-[10px] mr-1.5"></i>
+                <span class="text-[10px] font-bold">昼</span>
+            </button>
+            <button onclick="toggleMeds('dinner')" id="med-dinner" class="med-btn flex items-center px-3 py-1 rounded border border-gray-100 bg-gray-50 text-gray-400 transition-all duration-200">
+                <i class="fas fa-check-circle text-[10px] mr-1.5"></i>
+                <span class="text-[10px] font-bold">夜</span>
+            </button>
         </div>
     </div>
 
@@ -281,6 +315,13 @@
             { id: 'snack', label: '間食', icon: 'cookie-bite', color: 'pink' }
         ];
 
+        // State for Meds
+        let medsState = {
+            breakfast: false,
+            lunch: false,
+            dinner: false
+        };
+
         let activeCategoryForCamera = null;
         let activeInputRowForCamera = null;
 
@@ -341,6 +382,7 @@
                 }
 
                 data.entries = { breakfast:[], lunch:[], dinner:[], snack:[] };
+                data.meds = { breakfast: false, lunch: false, dinner: false }; // Reset meds
                 data.date = getTodayString();
                 localStorage.setItem('calorieTrackerDataV2', JSON.stringify(data));
             }
@@ -362,6 +404,12 @@
                 const data = JSON.parse(savedV2);
                 if (data.goal) goalInput.value = data.goal;
                 
+                // Load meds state
+                if (data.meds) {
+                    medsState = data.meds;
+                    updateMedsUI();
+                }
+
                 categories.forEach(cat => {
                     if (data.entries && data.entries[cat.id]) {
                         data.entries[cat.id].forEach(entry => {
@@ -390,6 +438,7 @@
             const data = {
                 goal: goalInput.value,
                 date: getTodayString(),
+                meds: medsState,
                 entries: {}
             };
 
@@ -420,6 +469,30 @@
         function saveSettings() {
             localStorage.setItem('geminiApiKey', apiKeyInput.value.trim());
             toggleSettingsModal();
+        }
+
+        // --- Meds Logic ---
+        function toggleMeds(time) {
+            medsState[time] = !medsState[time];
+            updateMedsUI();
+            saveData();
+        }
+
+        function updateMedsUI() {
+            const times = ['breakfast', 'lunch', 'dinner'];
+            times.forEach(time => {
+                const btn = document.getElementById(`med-${time}`);
+                if (medsState[time]) {
+                    btn.classList.add('active');
+                    btn.querySelector('i').classList.remove('fa-circle');
+                    btn.querySelector('i').classList.add('fa-check-circle');
+                } else {
+                    btn.classList.remove('active');
+                    btn.querySelector('i').classList.remove('fa-check-circle');
+                    btn.querySelector('i').classList.add('fa-circle'); // Or keep it check-circle but gray?
+                    // Let's stick to simple active class toggle style defined in CSS
+                }
+            });
         }
 
         // --- UI Interactions ---
