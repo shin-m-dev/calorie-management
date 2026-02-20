@@ -1,37 +1,37 @@
-# AI Agent Handoff Document
+# AIエージェント引き継ぎ資料 (HANDOFF)
 
-This document serves as a handover note for future AI agents or human developers working on this project. Please update this file after completing significant tasks or when pausing work.
+このドキュメントは、このプロジェクトで作業する将来のAIエージェントまたは人間の開発者のための引き継ぎノートです。重要なタスクを完了した後、または作業を中断するときに、このファイルを更新してください。
 
 ## 1. Current Status (現在の状況)
-- **Status**: [Working | Partially Working | Broken]
-- **Overview**: Briefly describe the current state of the project. What is the main focus right now?
+- **Status**: [Working (動作中) | Partially Working (一部動作) | Broken (破損)]
+- **Overview**: プロジェクトの現在の状態を簡潔に記述してください。現在の主な焦点は何ですか？
 
 ## 2. Recent Changes (直近の変更点)
-List the files modified and a brief description of the changes.
-- `filename`: Description of change
-- Added feature: ...
-- Fixed bug: ...
+変更されたファイルと変更の簡単な説明をリストしてください。
+- `ファイル名`: 変更内容の説明
+- 機能追加: ...
+- バグ修正: ...
 
 ## 3. Key Decisions & Rationale (重要な決定とその理由)
-Explain why certain implementation paths were chosen.
-- **Decision**: ...
-- **Reasoning**: ...
-- **Alternatives Considered**: ...
+特定の実装方針が選ばれた理由を説明してください。
+- **Decision (決定)**: ...
+- **Reasoning (理由)**: ...
+- **Alternatives Considered (検討した代替案)**: ...
 
 ## 4. Code Review Notes (コードレビュー指摘事項)
-If you have reviewed existing code, document your findings here.
-- **File**: `path/to/file`
-- **Severity**: [High | Medium | Low]
-- **Issue**: Description of the issue or potential improvement.
-- **Suggestion**: How to fix or improve it.
+既存のコードをレビューした場合は、その結果をここに文書化してください。
+- **File (ファイル)**: `path/to/file`
+- **Severity (重要度)**: [High (高) | Medium (中) | Low (低)]
+- **Issue (問題点)**: 問題や改善点の詳細。
+- **Suggestion (提案)**: 修正または改善方法。
 
 ## 5. Known Issues / TODOs (既知の問題 / 次やること)
-List any bugs, incomplete features, or technical debt.
-- [ ] Bug: Description
-- [ ] Feature: Description
-- [ ] Refactor: Description
+バグ、未完成の機能、または技術的負債をリストしてください。
+- [ ] Bug (バグ): 説明
+- [ ] Feature (機能): 説明
+- [ ] Refactor (リファクタリング): 説明
 
 ## 6. Environment & Setup (環境構築・実行方法)
-Document any specific setup instructions, API keys required (do not hardcode keys here, just mention them), or commands to run.
+特定のセットアップ手順、必要なAPIキー（ここにキーをハードコードしないでください）、または実行するコマンドを文書化してください。
 - **API Keys**: ...
 - **Commands**: ...

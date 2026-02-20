@@ -1,60 +1,60 @@
-# AI Agent Handoff Document
+# AIエージェント引き継ぎ資料 (HANDOFF)
 
-This document serves as a handover note for future AI agents or human developers working on this project. Please update this file after completing significant tasks or when pausing work.
+このドキュメントは、このプロジェクトで作業する将来のAIエージェントまたは人間の開発者のための引き継ぎノートです。重要なタスクを完了した後、または作業を中断するときに、このファイルを更新してください。
 
 ## 1. Current Status (現在の状況)
-- **Status**: Partially Working / Review Needed
-- **Overview**: The project is a single-page HTML application for calorie tracking. It includes features for manual entry, camera-based food analysis using Gemini API, history tracking, and medication reminders. The core functionality is implemented, but code review has identified several areas for improvement.
+- **Status**: Partially Working (一部動作) / Review Needed (要レビュー)
+- **Overview**: 本プロジェクトは、カロリー管理のためのシングルページHTMLアプリケーションです。手動入力、Gemini APIを使用したカメラによる食品解析、履歴管理、薬・サプリの記録機能が含まれています。主要な機能は実装されていますが、コードレビューによりいくつかの改善点が特定されています。
 
 ## 2. Recent Changes (直近の変更点)
-- `HANDOFF_TEMPLATE.md`: Created a template for handover documentation.
-- `HANDOFF.md`: Created this document to record the initial code review findings.
+- `HANDOFF_TEMPLATE.md`: 引き継ぎ資料のテンプレートを作成しました。
+- `HANDOFF.md`: 初回のコードレビュー結果を記録するために、このドキュメントを作成しました。
 
 ## 3. Key Decisions & Rationale (重要な決定とその理由)
-- **Single File Architecture**: Currently, all code (HTML, CSS, JS) is in `index.html`. This simplifies deployment (just open the file) but hampers maintainability as the project grows.
-- **Client-Side Only**: The app uses `localStorage` for data persistence and direct API calls from the browser. This eliminates the need for a backend server but exposes API keys if not handled carefully.
+- **Single File Architecture (単一ファイル構成)**: 現在、すべてのコード（HTML, CSS, JS）が `index.html` に含まれています。これによりデプロイ（ファイルを開くだけ）は簡単になりますが、プロジェクトの成長に伴い保守性が低下します。
+- **Client-Side Only (クライアントサイドのみ)**: アプリはデータ永続化に `localStorage` を使用し、ブラウザから直接APIを呼び出します。これによりバックエンドサーバーは不要になりますが、APIキーの取り扱いに注意が必要です。
 
 ## 4. Code Review Notes (コードレビュー指摘事項)
 
-### General Architecture
+### General Architecture (全体構成)
 - **File**: `index.html`
-- **Severity**: Low
-- **Issue**: Monolithic file structure.
-- **Suggestion**: Split CSS into `style.css` and JavaScript into `app.js` for better organization and cache management.
+- **Severity**: Low (低)
+- **Issue**: モノリシックなファイル構造になっています。
+- **Suggestion**: 整理とキャッシュ管理のために、CSSを `style.css` に、JavaScriptを `app.js` に分割することを推奨します。
 
-### Security
+### Security (セキュリティ)
 - **File**: `index.html` (Script section)
-- **Severity**: Medium
-- **Issue**: API Key exposure. The Gemini API key is stored in `localStorage` and used directly in client-side `fetch` calls.
-- **Suggestion**: This is acceptable for a personal local tool, but risky for public deployment. Recommend implementing a simple backend proxy or using Firebase Functions to hide the key if the app is to be shared. Warn users not to share their local storage data.
+- **Severity**: Medium (中)
+- **Issue**: APIキーの露出リスクがあります。Gemini APIキーが `localStorage` に保存され、クライアントサイドの `fetch` 呼び出しで直接使用されています。
+- **Suggestion**: 個人のローカルツールとしては許容範囲ですが、公開デプロイする場合はリスクがあります。共有する場合は、シンプルなバックエンドプロキシを実装するか、Firebase Functionsなどを使用してキーを隠蔽することを推奨します。また、ユーザーにローカルストレージデータを共有しないよう警告すべきです。
 
-### API Usage / Bugs
-- **File**: `index.html` -> `analyzeWithGemini` function
-- **Severity**: High
-- **Issue**: The model name is specified as `gemini-2.5-flash`.
+### API Usage / Bugs (API利用 / バグ)
+- **File**: `index.html` -> `analyzeWithGemini` 関数
+- **Severity**: High (高)
+- **Issue**: モデル名が `gemini-2.5-flash` と指定されています。
   ```javascript
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   ```
-  As of the current knowledge, the stable model versions are `gemini-1.5-flash` or `gemini-1.5-pro`. `gemini-2.5-flash` may be a typo or a non-existent model, which would cause API calls to fail.
-- **Suggestion**: Verify the model name. Change to `gemini-1.5-flash` unless `2.5` is confirmed to be valid.
+  現在の知識では、安定版のモデルバージョンは `gemini-1.5-flash` または `gemini-1.5-pro` です。`gemini-2.5-flash` はタイプミスか存在しないモデルの可能性が高く、API呼び出しが失敗する恐れがあります。
+- **Suggestion**: モデル名を確認してください。`2.5` が有効であると確認できない限り、`gemini-1.5-flash` に変更することを推奨します。
 
-### DOM Manipulation
+### DOM Manipulation (DOM操作)
 - **File**: `index.html` -> `renderCategories`, `addEntry`
-- **Severity**: Low
-- **Issue**: Extensive use of `innerHTML`.
-- **Suggestion**: While input is currently controlled, using `innerHTML` can be a vector for XSS if data sources become untrusted. Consider using `document.createElement()` and `textContent` for dynamic content insertion.
+- **Severity**: Low (低)
+- **Issue**: `innerHTML` が多用されています。
+- **Suggestion**: 現在入力は制御されていますが、データソースが信頼できなくなった場合、`innerHTML` の使用はXSSの脆弱性につながる可能性があります。動的なコンテンツ挿入には `document.createElement()` と `textContent` の使用を検討してください。
 
-### User Experience
+### User Experience (ユーザー体験)
 - **File**: `index.html`
-- **Severity**: Low
-- **Issue**: Error handling relies on a custom toast, which is good, but specific error messages from the API (e.g., quota exceeded) might be too technical for end-users.
-- **Suggestion**: Map API error codes to more user-friendly messages (e.g., "Daily limit reached" instead of "429").
+- **Severity**: Low (低)
+- **Issue**: エラー処理がカスタムトーストに依存しています。これは良いことですが、APIからの具体的なエラーメッセージ（例：割り当て超過）がエンドユーザーにとって専門的すぎる可能性があります。
+- **Suggestion**: APIのエラーコードを、よりユーザーフレンドリーなメッセージ（例：「429」ではなく「1日の利用制限に達しました」など）にマッピングすることを推奨します。
 
 ## 5. Known Issues / TODOs (既知の問題 / 次やること)
-- [ ] **Bug**: Fix the Gemini model name in `analyzeWithGemini` (likely change `2.5` to `1.5`).
-- [ ] **Refactor**: Extract CSS and JS into separate files.
-- [ ] **Feature**: Add data export/import functionality (JSON) to backup data outside `localStorage`.
+- [ ] **Bug**: `analyzeWithGemini` 内のGeminiモデル名を修正する（おそらく `2.5` を `1.5` に変更）。
+- [ ] **Refactor**: CSSとJSを別ファイルに抽出する。
+- [ ] **Feature**: `localStorage` 以外の場所にデータをバックアップできるよう、データのエクスポート/インポート機能（JSON）を追加する。
 
 ## 6. Environment & Setup (環境構築・実行方法)
-- **API Keys**: Requires a Google AI Studio API Key for the camera analysis feature.
-- **Commands**: Simply open `index.html` in a modern web browser. No build step required.
+- **API Keys**: カメラ解析機能にはGoogle AI StudioのAPIキーが必要です。
+- **Commands**: モダンなWebブラウザで `index.html` を開くだけです。ビルド手順は不要です。
