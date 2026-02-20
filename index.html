@@ -654,8 +654,8 @@
         }
 
         async function analyzeWithGemini(base64Image, mimeType, apiKey) {
-            // Using gemini-2.5-flash as requested previously
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            // Using gemini-flash-latest as requested previously
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
             
             const prompt = `
                 この画像の食品を分析してください。
